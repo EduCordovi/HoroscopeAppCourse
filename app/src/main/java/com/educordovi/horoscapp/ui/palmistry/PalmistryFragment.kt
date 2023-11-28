@@ -1,23 +1,25 @@
 package com.educordovi.horoscapp.ui.palmistry
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
-import com.educordovi.horoscapp.R
-import com.educordovi.horoscapp.databinding.FragmentLuckBinding
+import androidx.fragment.app.Fragment
 import com.educordovi.horoscapp.databinding.FragmentPalmistryBinding
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class PalmistryFragment : Fragment() {
 
-    companion object{
+    companion object {
         private const val CAMERA_PERMISSION = android.Manifest.permission.CAMERA
     }
 
@@ -26,25 +28,53 @@ class PalmistryFragment : Fragment() {
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ){isGranted ->
-        if (isGranted){
-            //Star Camera
-        } else{
-            Toast.makeText(requireContext(),"Acepta los permisos para poder disfrtutar de una experiencia mágica", Toast.LENGTH_LONG).show()
+    ) { isGranted ->
+        if (isGranted) {
+            starCamera()
+        } else {
+            Toast.makeText(
+                requireContext(),
+                "Acepta los permisos para poder disfrtutar de una experiencia mágica",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        if(checkCameraPermission()){
-            //Si tiene permisos aceptados hago algo
-            //star Camera
-        } else{
+        if (checkCameraPermission()) {
+            starCamera()
+        } else {
             requestPermissionLauncher.launch(CAMERA_PERMISSION)
         }
     }
 
-    fun checkCameraPermission():Boolean{
+    private fun starCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+
+        cameraProviderFuture.addListener({
+            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+
+            val preview = Preview.Builder()
+                .build()
+                .also {
+                    it.setSurfaceProvider(binding.ViewFinder.surfaceProvider)
+                }
+
+            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+            try {
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview)
+            } catch (e: Exception) {
+                Log.e("EduCordovi", "Algo falló ${e.message}")
+            }
+
+        }, ContextCompat.getMainExecutor(requireContext()))
+    }
+
+    fun checkCameraPermission(): Boolean {
         return PermissionChecker.checkSelfPermission(
             requireContext(),
             CAMERA_PERMISSION
@@ -55,7 +85,7 @@ class PalmistryFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentPalmistryBinding.inflate(layoutInflater,container,false)
+        _binding = FragmentPalmistryBinding.inflate(layoutInflater, container, false)
         return binding.root
     }
 
